@@ -1,28 +1,76 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function PatentOverview() {
   const navigate = useNavigate()
   const { id } = useParams()
   const [showMenu, setShowMenu] = useState(false)
+  const [patentData, setPatentData] = useState(null)
 
-  const patentData = {
-    title: 'EV Battery Thermal Management System',
-    patentNo: 'US2021001234',
-    filed: 'Jan 10, 2021',
-    status: 'Granted',
-    abstract: 'This invention relates to a thermal management system for electric vehicle (EV) batteries designed to optimize battery cooling by using a combination of liquid cooling circuits and phase change materials. The system aims to enhance battery lifespan and performance.',
-    inventors: ['Jane Smith', 'John Doe'],
-    assignee: 'EVTech Innovations Inc.',
-    publicationDate: 'Jul 15, 2021',
-    patentType: 'Utility',
-    topConcepts: [
-      'Battery Thermal Management',
-      'EV Battery Cooling',
-      'Phase Change Materials',
-      'Liquid Cooling Circuit',
-      'Energy Efficiency'
-    ]
+  useEffect(() => {
+    // Load analysis from localStorage
+    const saved = localStorage.getItem('patentAnalyses')
+    if (saved) {
+      const analyses = JSON.parse(saved)
+      const found = analyses.find(analysis => analysis.id === id)
+
+      if (found) {
+        // Map the analysis data to patent format
+        setPatentData({
+          title: found.title || 'Patent Analysis',
+          patentNo: `ANALYSIS-${id}`,
+          filed: found.date || new Date().toLocaleDateString(),
+          status: 'Analyzed',
+          abstract: found.description || 'No description available',
+          inventors: ['User Analysis'],
+          assignee: 'AI Patent Analyzer',
+          publicationDate: found.date || new Date().toLocaleDateString(),
+          patentType: found.domain || 'Technology',
+          similarity: found.similarity || 0,
+          icon: found.icon || '📄',
+          topConcepts: [
+            found.domain,
+            'Innovation Analysis',
+            'Patent Search',
+            'Technology Domain',
+            'Similarity Detection'
+          ].filter(Boolean)
+        })
+      } else {
+        // Fallback to default data
+        setPatentData({
+          title: 'EV Battery Thermal Management System',
+          patentNo: 'US2021001234',
+          filed: 'Jan 10, 2021',
+          status: 'Granted',
+          abstract: 'This invention relates to a thermal management system for electric vehicle (EV) batteries designed to optimize battery cooling by using a combination of liquid cooling circuits and phase change materials. The system aims to enhance battery lifespan and performance.',
+          inventors: ['Jane Smith', 'John Doe'],
+          assignee: 'EVTech Innovations Inc.',
+          publicationDate: 'Jul 15, 2021',
+          patentType: 'Utility',
+          similarity: 72,
+          icon: '🔋',
+          topConcepts: [
+            'Battery Thermal Management',
+            'EV Battery Cooling',
+            'Phase Change Materials',
+            'Liquid Cooling Circuit',
+            'Energy Efficiency'
+          ]
+        })
+      }
+    }
+  }, [id])
+
+  if (!patentData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⏳</div>
+          <p className="text-gray-600">Loading analysis...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -102,6 +150,17 @@ export default function PatentOverview() {
                   {patentData.status}
                 </span>
               </div>
+              {patentData.similarity !== undefined && (
+                <div className="text-sm">
+                  <p className="text-gray-600">Similarity Score</p>
+                  <span className={`inline-block px-3 py-1 font-bold rounded-full text-sm ${patentData.similarity >= 70 ? 'bg-green-100 text-green-700' :
+                    patentData.similarity >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                    {patentData.similarity}% Match
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -170,7 +229,10 @@ export default function PatentOverview() {
 
         {/* View Analysis Dashboard Button */}
         <div className="flex justify-center">
-          <button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl">
+          <button
+            onClick={() => navigate(`/analysis/${id}`)}
+            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl"
+          >
             View Analysis Dashboard
           </button>
         </div>

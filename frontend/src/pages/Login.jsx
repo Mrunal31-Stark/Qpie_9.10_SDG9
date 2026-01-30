@@ -3,14 +3,42 @@ import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
   const navigate = useNavigate()
+  const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault()
-    // Navigate to dashboard (no backend validation)
-    navigate('/dashboard')
+    setError('')
+    setLoading(true)
+
+    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
+    const payload = isLogin ? { email, password } : { username, email, password }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.msg || 'Authentication failed')
+      }
+
+      localStorage.setItem('token', data.token)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -31,11 +59,38 @@ export default function Login() {
           </div>
 
           {/* Title */}
-          <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">Log In</h1>
-          <p className="text-gray-500 text-center mb-8">Sign in to your AI Patent Analyzer account</p>
+          <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
+            {isLogin ? 'Log In' : 'Create Account'}
+          </h1>
+          <p className="text-gray-500 text-center mb-8">
+            {isLogin ? 'Sign in to your AI Patent Analyzer account' : 'Get started with AI Patent Analyzer'}
+          </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+              {error}
+            </div>
+          )}
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-5">
+            {/* Username Field (Register only) */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="johndoe"
+                  className="input-field"
+                  required
+                />
+              </div>
+            )}
+
             {/* Email Field */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -75,55 +130,44 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Checkbox and Link */}
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-gray-700">Remember me</span>
-              </label>
-              <a href="#" className="text-blue-600 hover:text-blue-700 font-semibold">
-                Forgot password?
-              </a>
-            </div>
+            {/* Checkbox and Link (Login only) */}
+            {isLogin && (
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700">Remember me</span>
+                </label>
+                <a href="#" className="text-blue-600 hover:text-blue-700 font-semibold">
+                  Forgot password?
+                </a>
+              </div>
+            )}
 
-            {/* Login Button */}
+            {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all shadow-md hover:shadow-lg mt-8"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-lg hover:from-blue-700 hover:to-blue-600 transition-all shadow-md hover:shadow-lg mt-8 disabled:opacity-50"
             >
-              Log In
+              {loading ? 'Processing...' : (isLogin ? 'Log In' : 'Sign Up')}
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or continue with</span>
-            </div>
-          </div>
-
-          {/* Social Login */}
-          <div className="grid grid-cols-2 gap-4">
-            <button className="py-2.5 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-colors">
-              Google
-            </button>
-            <button className="py-2.5 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-colors">
-              GitHub
-            </button>
-          </div>
-
-          {/* Sign Up Link */}
+          {/* Toggle Link */}
           <p className="text-center text-gray-600 mt-8">
-            Don't have an account?{' '}
-            <a href="#" className="text-blue-600 font-bold hover:text-blue-700">
-              Sign up
-            </a>
+            {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+            <button
+              onClick={() => {
+                setIsLogin(!isLogin)
+                setError('')
+              }}
+              className="text-blue-600 font-bold hover:text-blue-700"
+            >
+              {isLogin ? 'Sign up' : 'Log in'}
+            </button>
           </p>
         </div>
 
