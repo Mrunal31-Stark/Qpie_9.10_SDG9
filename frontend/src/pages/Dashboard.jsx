@@ -1,10 +1,125 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const fileInputRef = useRef(null)
   const [showMenu, setShowMenu] = useState(false)
   const [threshold, setThreshold] = useState(80)
+  const [domain, setDomain] = useState('')
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [patentText, setPatentText] = useState('')
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [recentAnalyses, setRecentAnalyses] = useState([])
+
+  // Load saved analyses from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('patentAnalyses')
+    if (saved) {
+      setRecentAnalyses(JSON.parse(saved))
+    } else {
+      // Set initial demo data
+      const demoData = [
+        {
+          id: 'patent-1',
+          title: 'EV Battery System',
+          date: 'Jan 15, 2026',
+          description: 'Thermal management system for electric vehicle batteries',
+          domain: 'Electric Vehicles',
+          similarity: 72,
+          icon: '🔋'
+        },
+        {
+          id: 'patent-2',
+          title: 'AI Optimization',
+          date: 'Jan 12, 2026',
+          description: 'Machine learning model for patent classification',
+          domain: 'AI & ML',
+          similarity: 45,
+          icon: '🤖'
+        },
+        {
+          id: 'patent-3',
+          title: 'Solar Tech',
+          date: 'Jan 10, 2026',
+          description: 'Advanced photovoltaic cell efficiency improvement',
+          domain: 'Renewable Energy',
+          similarity: 28,
+          icon: '☀️'
+        }
+      ]
+      setRecentAnalyses(demoData)
+      localStorage.setItem('patentAnalyses', JSON.stringify(demoData))
+    }
+  }, [])
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0]
+    if (file && file.type === 'application/pdf') {
+      setUploadedFile(file)
+      // Read file content (simplified - in production, you'd use a PDF parser)
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setPatentText(`PDF Uploaded: ${file.name}\nSize: ${(file.size / 1024).toFixed(2)} KB`)
+      }
+      reader.readAsText(file)
+    } else {
+      alert('Please upload a PDF file')
+    }
+  }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleAnalyze = () => {
+    // Validate inputs
+    if (!patentText && !uploadedFile && !searchKeyword) {
+      alert('Please provide patent text, upload a PDF, or enter a search keyword')
+      return
+    }
+
+    if (!domain) {
+      alert('Please select a technology domain')
+      return
+    }
+
+    // Generate new analysis
+    const newAnalysis = {
+      id: `patent-${Date.now()}`,
+      title: searchKeyword || uploadedFile?.name || 'Patent Analysis',
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      description: patentText.substring(0, 100) || searchKeyword || 'Uploaded patent document',
+      domain: domain,
+      similarity: threshold,
+      icon: getDomainIcon(domain)
+    }
+
+    // Add to recent analyses
+    const updated = [newAnalysis, ...recentAnalyses]
+    setRecentAnalyses(updated)
+    localStorage.setItem('patentAnalyses', JSON.stringify(updated))
+
+    // Navigate to patent overview (you can customize this)
+    navigate(`/patent/${newAnalysis.id}`)
+  }
+
+  const getDomainIcon = (domainName) => {
+    const icons = {
+      'Electric Vehicles': '🔋',
+      'Battery Technology': '🔋',
+      'AI & Machine Learning': '🤖',
+      'Renewable Energy': '☀️',
+      'Biotechnology': '🧬'
+    }
+    return icons[domainName] || '📄'
+  }
+
+  const getSimilarityColor = (similarity) => {
+    if (similarity >= 70) return 'bg-green-100 text-green-700'
+    if (similarity >= 40) return 'bg-yellow-100 text-yellow-700'
+    return 'bg-blue-100 text-blue-700'
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -28,7 +143,7 @@ export default function Dashboard() {
                 className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                  JD
+                  {localStorage.getItem('token') ? 'U' : 'JD'}
                 </div>
                 <span className="text-gray-700 font-semibold">Account</span>
                 <span>▼</span>
@@ -43,7 +158,10 @@ export default function Dashboard() {
                     Change Password
                   </a>
                   <button
-                    onClick={() => navigate('/')}
+                    onClick={() => {
+                      localStorage.removeItem('token')
+                      navigate('/')
+                    }}
                     className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50"
                   >
                     Log Out
@@ -66,16 +184,28 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Upload Patent Document</h2>
 
             {/* Upload Area */}
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-4 hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <div
+              onClick={handleUploadClick}
+              className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-4 hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer"
+            >
               <div className="text-4xl mb-3">📁</div>
               <button className="text-blue-600 font-bold hover:text-blue-700">
-                Upload PDF
+                {uploadedFile ? uploadedFile.name : 'Upload PDF'}
               </button>
               <p className="text-gray-500 text-sm mt-2">or Paste Text Below</p>
             </div>
 
             {/* Text Area */}
             <textarea
+              value={patentText}
+              onChange={(e) => setPatentText(e.target.value)}
               placeholder="Paste patent text, abstract, or claims here..."
               className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
@@ -88,6 +218,8 @@ export default function Dashboard() {
             {/* Search Input */}
             <input
               type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
               placeholder='e.g. "EV battery cooling technology"'
               className="input-field mb-6"
             />
@@ -117,8 +249,12 @@ export default function Dashboard() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Technology Domain:
               </label>
-              <select className="input-field">
-                <option>Select a domain</option>
+              <select
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Select a domain</option>
                 <option>Electric Vehicles</option>
                 <option>Battery Technology</option>
                 <option>AI & Machine Learning</option>
@@ -128,24 +264,26 @@ export default function Dashboard() {
             </div>
 
             {/* Alert Box */}
-            <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded mb-6">
-              <div className="flex gap-2">
-                <span className="text-xl">⚠️</span>
-                <div>
-                  <h3 className="font-bold text-orange-900">Alert: High Similarity Detected!</h3>
-                  <p className="text-orange-700 text-sm">
-                    This invention closely matches existing patents.
-                  </p>
+            {threshold >= 70 && (
+              <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded mb-6">
+                <div className="flex gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <h3 className="font-bold text-orange-900">Alert: High Similarity Detected!</h3>
+                    <p className="text-orange-700 text-sm">
+                      This invention closely matches existing patents.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Analyze Button */}
         <div className="flex justify-center mt-8">
           <button
-            onClick={() => navigate('/patent/sample-patent')}
+            onClick={handleAnalyze}
             className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold text-lg rounded-xl hover:from-blue-700 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl"
           >
             Analyze Patent
@@ -156,74 +294,32 @@ export default function Dashboard() {
         <section className="mt-16">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Analysis</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Analysis Card 1 */}
-            <div
-              onClick={() => navigate('/patent/patent-1')}
-              className="card p-6 cursor-pointer hover:shadow-xl transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg">EV Battery System</h3>
-                  <p className="text-gray-500 text-sm">Jan 15, 2026</p>
+            {recentAnalyses.map((analysis) => (
+              <div
+                key={analysis.id}
+                onClick={() => navigate(`/patent/${analysis.id}`)}
+                className="card p-6 cursor-pointer hover:shadow-xl transition-all"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg">{analysis.title}</h3>
+                    <p className="text-gray-500 text-sm">{analysis.date}</p>
+                  </div>
+                  <span className="text-2xl">{analysis.icon}</span>
                 </div>
-                <span className="text-2xl">🔋</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">
-                Thermal management system for electric vehicle batteries
-              </p>
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                  Electric Vehicles
-                </span>
-                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                  72% Match
-                </span>
-              </div>
-            </div>
-
-            {/* Analysis Card 2 */}
-            <div className="card p-6 cursor-pointer hover:shadow-xl transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg">AI Optimization</h3>
-                  <p className="text-gray-500 text-sm">Jan 12, 2026</p>
+                <p className="text-gray-600 text-sm mb-4">
+                  {analysis.description}
+                </p>
+                <div className="flex gap-2">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                    {analysis.domain}
+                  </span>
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getSimilarityColor(analysis.similarity)}`}>
+                    {analysis.similarity}% Match
+                  </span>
                 </div>
-                <span className="text-2xl">🤖</span>
               </div>
-              <p className="text-gray-600 text-sm mb-4">
-                Machine learning model for patent classification
-              </p>
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
-                  AI & ML
-                </span>
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">
-                  45% Match
-                </span>
-              </div>
-            </div>
-
-            {/* Analysis Card 3 */}
-            <div className="card p-6 cursor-pointer hover:shadow-xl transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg">Solar Tech</h3>
-                  <p className="text-gray-500 text-sm">Jan 10, 2026</p>
-                </div>
-                <span className="text-2xl">☀️</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">
-                Advanced photovoltaic cell efficiency improvement
-              </p>
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">
-                  Renewable Energy
-                </span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                  28% Match
-                </span>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
       </main>
